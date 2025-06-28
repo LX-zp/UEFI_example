@@ -1,0 +1,70 @@
+[Defines]
+  INF_VERSION                    = 0x00010006
+  BASE_NAME                      = OpromSnake
+  FILE_GUID                      = a912f198-7f2a-4803-1308-c75db806ec84
+  MODULE_TYPE                    = UEFI_DRIVER
+  VERSION_STRING                 = 0.1
+  ENTRY_POINT                    = UefiMain
+  UNLOAD_IMAGE                   = DefaultUnload
+
+  PCI_VENDOR_ID = 0x1C00
+  PCI_DEVICE_ID = 0x4349
+# PCI_CLASS_CODE = 0x018000
+  PCI_CLASS_CODE = 0x020000
+  PCI_REVISION = 0x0003
+  PCI_COMPRESS = TRUE
+#
+
+[Sources]
+  ComponentName.c
+  OpromSnake.c
+  OpromSnake.h
+  Common.c
+  Common.h
+  #FileRW.c
+  #FileRW.h
+  Keyboard.c
+  Keyboard.h
+  Graphic.c
+  Graphic.h 
+  Window.c 
+  Window.h 
+  Font.c
+  Font.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  BaseMemoryLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiLib
+  PcdLib
+  UefiRuntimeServicesTableLib
+  HiiLib
+  DebugLib
+ # BasePciExpressLib
+  
+[Protocols]
+  gEfiSimpleTextInputExProtocolGuid             ## CONSUMES
+  gEfiGraphicsOutputProtocolGuid
+  gEfiSimpleFileSystemProtocolGuid
+  gEfiSimplePointerProtocolGuid
+  gEfiDevicePathProtocolGuid
+  gEfiPciIoProtocolGuid                         ## BY_START
+  gEfiPciRootBridgeIoProtocolGuid               ## BY_START
+  gEfiHiiImageExProtocolGuid
+  gEfiHiiImageDecoderProtocolGuid
+  gEfiRngProtocolGuid
+  gEfiHiiImageProtocolGuid
+  gEfiBlockIoProtocolGuid                       ## BY_START
+  gEfiSimpleTextInProtocolGuid                  # PROTOCOL BY_START
+  gEfiGraphicsOutputProtocolGuid
+  gEfiSerialIoProtocolGuid
+
+  [BuildOptions]
+  MSFT:*_*_IA32_CC_FLAGS  = /Oi-
+  MSFT:*_*_*_CC_FLAGS = /utf-8 /w
