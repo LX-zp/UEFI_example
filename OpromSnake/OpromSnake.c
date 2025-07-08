@@ -37,10 +37,13 @@ UINT8 foodColor = BLACK;
 UINT8 snakeColor = BLACK;
 INT32 FoodBlocks[X_MAP*Y_MAP];  //保存可用的SnakeBlock
 INT32 FoodBlockCounts;
-INT32 SnakeStatus,SleepTime = 200; //运行的延时时间，ms为单位
+INT32 SnakeStatus,SleepTime = 150; //运行的延时时间，ms为单位
 INT32 Score=0;       //成绩，吃到一个食物则加10分
 UINT8 EndGameFlag = 0;  //1 撞墙了  2 咬到自己  3 主动退出游戏
 EFI_INPUT_KEY key={0,0};
+INT32 flag_acc = 0;
+INT32 time =0;
+EFI_EVENT periodic_event[2];
 
 UINT8 *s_crosswall = "对不起，撞到墙了，游戏结束！";
 UINT8 *s_biteself =  "对不起，咬到自己了，游戏结束！";
@@ -49,7 +52,8 @@ UINT8 *s_gamescore = "您的得分是： ";
 UINT8 *s_start    =  "按任意键开始";
 UINT8 *s_level    =  "选择难度：1、2、3";
 UINT8 *s_gamename =  "肉肉宝贝的贪吃蛇游戏";
-UINT8 *s_time     =  "time:0000 s";
+UINT8 *s_time     =  "time：";
+UINT8 *s_socre    =  "得分是：";
 
 
 INT32 robin_rand(); //robin's random function
@@ -68,7 +72,7 @@ UINT8 NotCrossWall(VOID);
 UINT8 SnakeMove(VOID);
 VOID GameRun(VOID);
 VOID EndGame(VOID);
-EFI_STATUS TaskCreate (IN  EFI_EVENT_NOTIFY NotifyFunction,IN  VOID *Context,IN  EFI_TIMER_DELAY  Type,IN  UINT64 TriggerTime);
+EFI_STATUS TaskCreate (IN  EFI_EVENT_NOTIFY NotifyFunction,IN  VOID *Context,IN  EFI_TIMER_DELAY  Type,IN    UINT64 TriggerTime,IN EFI_EVENT *event);
 VOID ReadKeyboard(VOID);
 VOID ShowTime(VOID);
 
@@ -464,21 +468,25 @@ VOID snake(VOID)
     Print(L"flag=%x\n",flag);
     Delayms(2000);
 restart:
+    Score=0;
+    flag_acc=0;
+    time=0;
+
     SwitchGraphicsMode(TRUE);
     SetBKG(&(gColorTable[DEEPBLUE]));
-    draw_string(s_start, 500, 350, &MyFontArray, &(gColorTable[WHITE]));
+    draw_string(s_start, 450, 350, &MyFontArray, &(gColorTable[WHITE]));
 
     //开始等待任意按键
     WaitKey();
     SetBKG(&(gColorTable[DEEPBLUE]));
-    draw_string(s_level, 450, 350, &MyFontArray, &(gColorTable[WHITE]));
+    draw_string(s_level, 400, 350, &MyFontArray, &(gColorTable[WHITE]));
 
     Delayms(1000);
     FlushKeyBuffer();
     GetKey(&key);
     if(key.UnicodeChar=='1')
     {
-        SleepTime=200;
+        SleepTime=150;
     }
     else if(key.UnicodeChar=='2')
     {
@@ -486,16 +494,16 @@ restart:
     }
     else if(key.UnicodeChar=='3')
     {
-        SleepTime=50;
+        SleepTime=80;
+        flag_acc=1;
     }
     else
     {
         SleepTime = 300;
     }
-    
-    Score=0;
-    TaskCreate(ReadKeyboard, (VOID*)NULL, TimerPeriodic, 10 * 1000);
-    TaskCreate(ShowTime, (VOID*)NULL, TimerPeriodic, 10 * 1000*1000);
+
+    TaskCreate(ReadKeyboard, (VOID*)NULL, TimerPeriodic, 10* 1000,&periodic_event[0]);
+    TaskCreate(ShowTime, (VOID*)NULL, TimerPeriodic, 10 * 1000*1000,&periodic_event[1]);
     SwitchGraphicsMode(TRUE);
     SetBKG(&(gColorTable[DEEPBLUE]));
     CreateMap();
@@ -506,6 +514,8 @@ restart:
     SetMyMode(0x0);
     SwitchGraphicsMode(FALSE);
 
+    gBS->CloseEvent(periodic_event[0]);
+    gBS->CloseEvent(periodic_event[1]);
     if(EndGameFlag !=USEREXIT)
         goto restart;
     return(0);
@@ -764,17 +774,17 @@ VOID RandomFood(VOID)
     tempfood->y = ((tempfood->BlockNumber) / X_MAP)  *(SNAKEBLOCK + SNAKEBLANK);
     tempfood->next = NULL;
 
-    if(tempfood->x == 0)
-        tempfood->x=10;
+    if(tempfood->x == 10)
+        tempfood->x=20;
     
-    if(tempfood->x == 490)
-        tempfood->x=480;
+    if(tempfood->x == 480)
+        tempfood->x=470;
 
-    if(tempfood->y == 0)
-        tempfood->y=10;
+    if(tempfood->y == 10)
+        tempfood->y=20;
     
-    if(tempfood->y == 490)
-        tempfood->y=480;
+    if(tempfood->y == 480)
+        tempfood->y=470;
 
     food = tempfood;
     foodColor = (UINT8)(robin_rand() % 10);  //共10个颜色可选
@@ -845,7 +855,7 @@ UINT8 SnakeMove(VOID)
         while(pSnake != NULL)
         {
         SnakeElement(pSnake->x,pSnake->y,snakeColor);  //变成食物的颜色
-        Delayms(20);
+        Delayms(30);
         pSnake=pSnake->next;
         }
         Score+=10;
@@ -941,11 +951,11 @@ VOID EndGame(VOID)
         draw_string(s_biteself, strX, strY, &MyFontArray, &(gColorTable[WHITE]));
     else if(EndGameFlag == USEREXIT)
         draw_string(s_userexit, strX, strY, &MyFontArray, &(gColorTable[WHITE]));
-    
+
     draw_string(s_gamescore, strX, strY+20, &MyFontArray, &(gColorTable[WHITE]));
     AsciiSPrint(buffsStr,5,"%d",Score);
     draw_string(buffsStr, strX+108+2, strY+20, &MyFontArray, &(gColorTable[WHITE])); //108+2是计算s_gamescore长度的结果
-    // AsciiSPrint();
+    
     Delayms(3000);
 }
 
@@ -954,22 +964,22 @@ TaskCreate (
     IN  EFI_EVENT_NOTIFY NotifyFunction,
     IN  VOID             *Context,
     IN  EFI_TIMER_DELAY  Type,
-    IN  UINT64           TriggerTime
+    IN  UINT64           TriggerTime,
+    IN  EFI_EVENT   *event
 )
 {
     EFI_STATUS  Status;
-    EFI_EVENT   Event;
     Status = gBS->CreateEvent (
-                        EVT_TIMER | EVT_NOTIFY_SIGNAL, 
-                        TPL_NOTIFY, 
-                        (EFI_EVENT_NOTIFY)NotifyFunction, 
+                        EVT_TIMER | EVT_NOTIFY_SIGNAL,
+                        TPL_NOTIFY,
+                        (EFI_EVENT_NOTIFY)NotifyFunction,
                         Context, 
-                        &Event
+                        event
                         );
     if (EFI_ERROR (Status)) {
         return EFI_UNSUPPORTED;
     }
-    Status = gBS->SetTimer (Event, Type, TriggerTime);
+    Status = gBS->SetTimer (*event, Type, TriggerTime);
     if (EFI_ERROR (Status)) {
         return EFI_UNSUPPORTED;
     }
@@ -981,12 +991,25 @@ VOID ReadKeyboard(VOID)
     CheckKey(&key);
 }
 
-
 VOID ShowTime(VOID)
 {
-    s_time[5] = '0';
-    s_time[6] = '0';
-    s_time[7] = '0';
-    s_time[8] = '0';
+    CHAR8 buffer1[10]={0};
+    CHAR8 buffer2[10]={0};
+    //每一帧时间间隔减小1ms
+    if(flag_acc == 1 && SleepTime >=60)
+        SleepTime = SleepTime-1;
+
+    AsciiSPrint(buffer1,5,"%d",time);
     draw_string(s_time, 600, 100, &MyFontArray, &(gColorTable[WHITE]));
+    
+    rectblock(660,100,660+200,100+40, &(gColorTable[DEEPBLUE]));
+    draw_string(buffer1, 660, 100, &MyFontArray, &(gColorTable[WHITE]));
+
+    AsciiSPrint(buffer2,5,"%d",Score);
+    draw_string(s_socre,600, 150, &MyFontArray, &(gColorTable[WHITE]));
+    
+    rectblock(670,150,670+200,150+40, &(gColorTable[DEEPBLUE]));
+    draw_string(buffer2,670, 150, &MyFontArray, &(gColorTable[WHITE]));
+
+    time++;
 }
