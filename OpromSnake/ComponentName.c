@@ -18,7 +18,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
  * 知乎: https://www.zhihu.com/column/c_1233025362843209728
  * **/
 
-#include "OpromSnake.h"
+#include "Common.h"
 
 //
 // EFI Component Name Protocol

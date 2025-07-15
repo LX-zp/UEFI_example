@@ -16,9 +16,10 @@
 #
 
 [Sources]
+  MainOprom.c
   ComponentName.c
-  OpromSnake.c
-  OpromSnake.h
+  Snake.c
+  Snake.h
   Common.c
   Common.h
   #FileRW.c
